@@ -44,6 +44,16 @@
 	chosen {
 		bootargs = "console=ttyS0 root=/dev/ram";
 	} ;
+
+	clocks {
+		ad9467_clk: clock@0 {
+			#clock-cells = <0>;
+			compatible = "fixed-clock";
+			clock-frequency = <250000000>;
+			clock-output-names = "clkin";
+		};
+	};
+
 	cpus {
 		#address-cells = <1>;
 		#cpus = <0x1>;
@@ -302,6 +312,8 @@
 				compatible = "ad9467";
 				reg = <0>;
 				spi-max-frequency = <10000000>;
+				clocks = <&ad9467_clk 0>;
+				clock-names = "clkin";
 			};
 		} ;
 		axi_timer_0: timer@41c00000 {

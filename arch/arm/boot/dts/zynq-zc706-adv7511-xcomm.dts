@@ -499,13 +499,6 @@
 			interrupt-parent = <&gic>;
 		};
 
-		xadc@f8007100 {
-			compatible = "xlnx,ps7-xadc-1.00.a";
-			reg = <0xf8007100 0x20>;
-			interrupts = <0 7 4>;
-			interrupt-parent = <&gic>;
-		};
-
 		axi_dma_0: axidma@40440000 {
 			#address-cells = <1>;
 			#size-cells = <1>;
@@ -637,5 +630,65 @@
 			xlnx,slv-dwidth = <0x20>;
 			xlnx,use-wstrb = <0x0>;
 		} ;
+
+
+		xadc@f8007100 {
+			compatible = "xlnx,ps7-xadc-1.00.a";
+			reg = <0xf8007100 0x20>;
+			interrupts = <0 7 4>;
+			interrupt-parent = <&gic>;
+			xlnx,channels {
+				#address-cells = <1>;
+				#size-cells = <0>;
+				channel@0 {
+					reg = <0>;
+					xlnx,bipolar;
+				};
+			};
+		};
+/*
+		xadc@43200000 {
+			compatible = "xlnx,axi-xadc-1.00.a";
+			reg = <0x43200000 0x1000>;
+			interrupts = <0 53 4>;
+			interrupt-parent = <&gic>;
+
+			xlnx,channels {
+				#address-cells = <1>;
+				#size-cells = <0>;
+				channel@0 {
+					reg = <0>;
+					xlnx,bipolar;
+				};
+			};
+		};
+		*/
+	};
+	xadc_dac_vref: fixedregulator@0 {
+		compatible = "regulator-fixed";
+		regulator-name = "fixed-supply";
+		regulator-min-microvolt = <2500000>;
+		regulator-max-microvolt = <2500000>;
+		regulator-boot-on;
+	};
+
+	spi: spi@e0006000 {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		compatible = "xlnx,ps7-spi-1.00.a";
+		reg = <0xe0006000 0x1000>;
+		interrupts = <0 26 4>;
+		interrupt-parent = <&gic>;
+		bus-num = <0>;
+		num-chip-select = <1>;
+
+		ad5025@0 {
+			compatible = "adi,ad5025";
+			reg = <0>;
+			spi-max-frequency = <1000000>;
+			spi-cpha;
+			vrefA-supply = <&xadc_dac_vref>;
+			vrefB-supply = <&xadc_dac_vref>;
+		};
 	};
 };

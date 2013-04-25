@@ -254,6 +254,10 @@ static void xadc_ps7_unmask_worker(struct work_struct *work)
 
 	spin_unlock_irq(&xadc->lock);
 
+
+	if (unmask)
+		xadc_handle_events(indio_dev, xadc_ps7_transform_alarm(unmask));
+
 	/* if still pending some alarm re-trigger the timer */
 	if (xadc->ps7_masked_alarm) {
 		schedule_delayed_work(&xadc->ps7_unmask_work,

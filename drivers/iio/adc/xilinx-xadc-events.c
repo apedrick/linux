@@ -58,11 +58,40 @@ static void xadc_handle_event(struct iio_dev *indio_dev, unsigned int event)
 				iio_get_time_ns());
 		}
 
+		if (((xadc->threshold_state & BIT(offset)) || (xadc->threshold_state & BIT(offset + 4)))
+			&&
+				((val <= xadc->threshold[offset]) && (val >= xadc->threshold[offset + 4]))) {
+			iio_push_event(indio_dev,
+					IIO_UNMOD_EVENT_CODE(chan->type, chan->channel,
+								IIO_EV_TYPE_THRESH_NOT_ACTIVE, IIO_EV_DIR_EITHER),
+							iio_get_time_ns());
+		}
+
 	} else {
+		/* 
+		 * todo: remove this if/else case;
+		 * For temperature event aswell, the checks should be as is in "if"
+		 * right now.
+		 */
+		ret = xadc_read_reg(xadc, chan->address, &val);
+		if (ret)
+			return;
+		if (val >= xadc->threshold[offset + 4]) {
 			iio_push_event(indio_dev,
 				IIO_UNMOD_EVENT_CODE(chan->type, chan->channel,
 					IIO_EV_TYPE_THRESH, IIO_EV_DIR_RISING),
 				iio_get_time_ns());
+		} else {
+			/*
+			 * todo: make another case of checking for lower threshold
+		     * todo: check if the value is between the thresholds
+			 * no more temperature threshold
+			 */
+			iio_push_event(indio_dev,
+							IIO_UNMOD_EVENT_CODE(chan->type, chan->channel,
+									IIO_EV_TYPE_THRESH_NOT_ACTIVE, IIO_EV_DIR_EITHER),
+									iio_get_time_ns());
+		}
 	}
 
 }

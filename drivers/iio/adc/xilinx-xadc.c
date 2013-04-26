@@ -117,6 +117,18 @@ static void xadc_ps7_write_fifo(struct xadc *xadc, uint32_t *cmd,
 		xadc_ps7_write_reg(xadc, XADCPS7_REG_CFIFO, cmd[i]);
 }
 
+static void xadc_ps7_drain_fifo(struct xadc *xadc)
+{
+	uint32_t status, tmp;
+
+	xadc_ps7_read_reg(xadc, XADCPS7_REG_STATUS, &status);
+
+	while (!(status & XADCPS7_STATUS_DFIFOE)) {
+		xadc_ps7_read_reg(xadc, XADCPS7_REG_DFIFO, &tmp);
+		xadc_ps7_read_reg(xadc, XADCPS7_REG_STATUS, &status);
+	}
+}
+
 static int xadc_ps7_write_adc_reg(struct xadc *xadc, unsigned int reg,
 	uint16_t val)
 {
@@ -161,6 +173,7 @@ static int xadc_ps7_read_adc_reg(struct xadc *xadc, unsigned int reg,
 	cmd[0] = XADCPS7_CMD(XADCPS7_CMD_READ, reg, 0);
 	cmd[1] = XADCPS7_CMD(XADCPS7_CMD_NOP, 0, 0);
 
+	xadc_ps7_drain_fifo(xadc);
 	INIT_COMPLETION(xadc->completion);
 
 	xadc_ps7_write_fifo(xadc, cmd, ARRAY_SIZE(cmd));

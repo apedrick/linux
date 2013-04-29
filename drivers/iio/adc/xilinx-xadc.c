@@ -1165,12 +1165,20 @@ static int xadc_probe(struct platform_device *pdev)
 	if (ret)
 		goto err_free_irq;
 
-	/* Go to non-buffered mode */
-	xadc_postdisable(indio_dev);
-
 	/* Disable all alarms */
 	xadc_update_reg(xadc, XADC_REG_CONF1, XADC_CONF1_ALARM_MASK,
 		XADC_CONF1_ALARM_MASK);
+
+	/* Set thresholds to min/max */
+	for (i = 0; i < 16; i++) {
+		if (i % 8 < 4)
+			xadc_write_reg(xadc, XADC_REG_THRESHOLD(i), 0xffff);
+		else
+			xadc_write_reg(xadc, XADC_REG_THRESHOLD(i), 0);
+	}
+
+	/* Go to non-buffered mode */
+	xadc_postdisable(indio_dev);
 
 	ret = iio_device_register(indio_dev);
 	if (ret)

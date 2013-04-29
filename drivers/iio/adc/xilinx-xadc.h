@@ -58,6 +58,9 @@ struct xadc {
 	enum xadc_external_mux_mode external_mux_mode;
 
 	unsigned int ps7_alarm;
+	unsigned int ps7_masked_alarm;
+	unsigned int ps7_intmask;
+	struct delayed_work ps7_unmask_work;
 
 	struct mutex mutex;
 	struct spinlock lock;

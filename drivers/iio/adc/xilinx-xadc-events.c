@@ -146,7 +146,7 @@ int xadc_write_event_config(struct iio_dev *indio_dev,
 	unsigned int offset = xadc_get_threshold_offset(chan, type, dir);
 	struct xadc *xadc = iio_priv(indio_dev);
 	unsigned int alarm;
-	uint16_t val, cfg;
+	uint16_t val, cfg, old_cfg;
 	int ret;
 
 	mutex_lock(&xadc->mutex);
@@ -176,16 +176,19 @@ int xadc_write_event_config(struct iio_dev *indio_dev,
 		xadc->threshold_state &= ~BIT(offset);
 
 	alarm = xadc_get_active_alarms(xadc);
+
 	xadc->ops->update_alarm(xadc, alarm);
 
 	ret = _xadc_read_reg(xadc, XADC_REG_CONF1, &cfg);
 	if (ret)
 		goto err_out;
+	old_cfg = cfg;
 	cfg |= XADC_CONF1_ALARM_MASK;
 	cfg &= ~((alarm & 0xf0) << 4); /* bram, pint, paux, ddr */
 	cfg &= ~((alarm & 0x08) >> 3); /* ot */
 	cfg &= ~((alarm & 0x07) << 1); /* temp, vccint, vccaux */
-	ret = _xadc_write_reg(xadc, XADC_REG_CONF1, cfg);
+	if (old_cfg != cfg)
+		ret = _xadc_write_reg(xadc, XADC_REG_CONF1, cfg);
 
 err_out:
 	mutex_unlock(&xadc->mutex);

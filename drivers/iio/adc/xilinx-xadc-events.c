@@ -36,7 +36,7 @@ static void xadc_handle_event(struct iio_dev *indio_dev, unsigned int event)
 		chan = &indio_dev->channels[event];
 
 	if (event != 3) {
-		ret = _xadc_read_reg(xadc, chan->address, &val);
+		ret = xadc_read_reg(xadc, chan->address, &val);
 		if (ret)
 			return;
 

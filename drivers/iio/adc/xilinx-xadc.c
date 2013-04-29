@@ -548,7 +548,7 @@ static irqreturn_t xadc_trigger_handler(int irq, void *p)
 	for_each_set_bit(i, indio_dev->active_scan_mask,
 		indio_dev->masklength) {
 		chan = xadc_scan_index_to_channel(i);
-		_xadc_read_reg(xadc, chan, &xadc->data[j]);
+		xadc_read_reg(xadc, chan, &xadc->data[j]);
 		j++;
 	}
 

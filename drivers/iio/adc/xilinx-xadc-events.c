@@ -153,8 +153,10 @@ static int xadc_write_event_threshold(struct xadc *xadc,
 	if (ret)
 		return ret;
 
-	if (chan->type == IIO_TEMP) /* Special case, no hysteresis support yet */
-		ret = _xadc_write_reg(xadc, XADC_REG_THRESHOLD(offset + 4), val);
+	if (chan->type == IIO_TEMP) {
+		ret = _xadc_write_reg(xadc, XADC_REG_THRESHOLD(offset + 4),
+			xadc->threshold[offset + 4]);
+	}
 	return ret;
 }
 
@@ -232,7 +234,16 @@ int xadc_read_event_value(struct iio_dev *indio_dev,
 	unsigned int offset = xadc_get_threshold_offset(chan, type, dir);
 	struct xadc *xadc = iio_priv(indio_dev);
 
-	*val = xadc->threshold[offset] >> 4;
+	switch (info) {
+	case IIO_EV_INFO_VALUE:
+		*val = xadc->threshold[offset] >> 4;
+		break;
+	case IIO_EV_INFO_HYSTERESIS:
+		*val = (xadc->threshold[offset] - xadc->threshold[offset + 4]) >> 4;
+		break;
+	default:
+		return -EINVAL;
+	}
 
 	return 0;
 }
@@ -248,11 +259,23 @@ int xadc_write_event_value(struct iio_dev *indio_dev,
 	val <<= 4;
 
 	mutex_lock(&xadc->mutex);
-	xadc->threshold[offset] = val;
 
+	switch (info) {
+	case IIO_EV_INFO_VALUE:
+		/* Keep hysteresis const */
+		if (chan->type == IIO_TEMP)
+			xadc->threshold[offset + 4] += val - xadc->threshold[offset];
+
+		xadc->threshold[offset] = val;
+		break;
+	case IIO_EV_INFO_HYSTERESIS:
+		xadc->threshold[offset + 4] = xadc->threshold[offset] - val;
+		break;
+	default:
+		return -EINVAL;
+	}
 	if (xadc->threshold_state & BIT(offset))
 		ret = xadc_write_event_threshold(xadc, chan, offset, val);
-
 	mutex_unlock(&xadc->mutex);
 
 	return ret;

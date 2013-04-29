@@ -30,10 +30,12 @@ static void xadc_handle_event(struct iio_dev *indio_dev, unsigned int event)
 	else
 		offset = event + 4;
 
-	if (event > 2)
-		chan = &indio_dev->channels[event - 1];
-	else
+	if (event < 3)
 		chan = &indio_dev->channels[event];
+	else if (event == 3)
+		chan = &indio_dev->channels[0];
+	else
+		chan = &indio_dev->channels[event - 1];
 
 	if (event != 3) {
 		ret = xadc_read_reg(xadc, chan->address, &val);
@@ -110,6 +112,14 @@ static int xadc_write_event_threshold(struct xadc *xadc,
 {
 	int ret;
 
+	if (offset == 3) {
+		/*
+		 * According to the datasheet we need to set the lower 4 bits to
+		 * 0x3, otherwise 125 degree celsius will be used as the threshold.
+		 */
+		val = (val & ~0xf) | 0x3;
+	}
+
 	ret = _xadc_write_reg(xadc, XADC_REG_THRESHOLD(offset), val);
 	if (ret)
 		return ret;
@@ -172,10 +182,9 @@ int xadc_write_event_config(struct iio_dev *indio_dev,
 	if (ret)
 		goto err_out;
 	cfg |= XADC_CONF1_ALARM_MASK;
-	cfg &= ~((alarm & 0xf0) << 4);
-	cfg &= ~((alarm & 0x04) >> 2);
-	cfg &= ~((alarm & 0x03) << 1);
-	cfg &= ~(alarm & 0x08);
+	cfg &= ~((alarm & 0xf0) << 4); /* bram, pint, paux, ddr */
+	cfg &= ~((alarm & 0x08) >> 3); /* ot */
+	cfg &= ~((alarm & 0x07) << 1); /* temp, vccint, vccaux */
 	ret = _xadc_write_reg(xadc, XADC_REG_CONF1, cfg);
 
 err_out:

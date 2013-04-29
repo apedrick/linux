@@ -29,10 +29,10 @@ int xadc_write_event_config(struct iio_dev *indio_dev,
 	enum iio_event_direction dir, int state);
 int xadc_read_event_value(struct iio_dev *indio_dev,
 	const struct iio_chan_spec *chan, enum iio_event_type type,
-	enum iio_event_direction dir, int *val);
+	enum iio_event_direction dir, int *val, enum iio_event_info info);
 int xadc_write_event_value(struct iio_dev *indio_dev,
 	const struct iio_chan_spec *chan, enum iio_event_type type,
-	enum iio_event_direction dir, int val);
+	enum iio_event_direction dir, int val, enum iio_event_info info);
 
 enum xadc_external_mux_mode {
 	XADC_EXTERNAL_MUX_NONE,

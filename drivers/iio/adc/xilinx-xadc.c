@@ -972,6 +972,26 @@ static const struct attribute_group xadc_attribute_group = {
 	.attrs = xadc_attributes,
 };
 
+static const struct iio_event_spec xadc_temp_events[] = {
+	{
+		.type = IIO_EV_TYPE_THRESH,
+		.dir = IIO_EV_DIR_RISING,
+		.mask_separate = BIT(IIO_EV_INFO_VALUE),
+	},
+};
+
+static const struct iio_event_spec xadc_voltage_events[] = {
+	{
+		.type = IIO_EV_TYPE_THRESH,
+		.dir = IIO_EV_DIR_RISING,
+		.mask_separate = BIT(IIO_EV_INFO_VALUE),
+	}, {
+		.type = IIO_EV_TYPE_THRESH,
+		.dir = IIO_EV_DIR_FALLING,
+		.mask_separate = BIT(IIO_EV_INFO_VALUE),
+	},
+};
+
 #define XADC_CHAN_TEMP(_chan, _scan_index, _addr) { \
 	.type = IIO_TEMP, \
 	.indexed = 1, \
@@ -980,7 +1000,8 @@ static const struct attribute_group xadc_attribute_group = {
 	.info_mask = IIO_CHAN_INFO_RAW_SEPARATE_BIT | \
 		IIO_CHAN_INFO_SCALE_SEPARATE_BIT | \
 		IIO_CHAN_INFO_OFFSET_SEPARATE_BIT, \
-	.event_mask = IIO_EV_BIT(IIO_EV_TYPE_THRESH, IIO_EV_DIR_RISING), \
+	.event_spec = xadc_temp_events, \
+	.num_event_specs = ARRAY_SIZE(xadc_temp_events), \
 	.scan_index = (_scan_index), \
 	.scan_type = { \
 		.sign = 'u', \
@@ -998,9 +1019,8 @@ static const struct attribute_group xadc_attribute_group = {
 	.address = (_addr), \
 	.info_mask = IIO_CHAN_INFO_RAW_SEPARATE_BIT | \
 		IIO_CHAN_INFO_SCALE_SEPARATE_BIT, \
-	.event_mask = !(_alarm) ? 0 : \
-		(IIO_EV_BIT(IIO_EV_TYPE_THRESH, IIO_EV_DIR_RISING) | \
-		IIO_EV_BIT(IIO_EV_TYPE_THRESH, IIO_EV_DIR_FALLING)), \
+	.event_spec = (_alarm) ? xadc_voltage_events : NULL, \
+	.num_event_specs = (_alarm) ? ARRAY_SIZE(xadc_voltage_events) : 0, \
 	.scan_index = (_scan_index), \
 	.scan_type = { \
 		.sign = 'u', \

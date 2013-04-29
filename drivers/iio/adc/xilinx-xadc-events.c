@@ -227,7 +227,7 @@ err_out:
 
 int xadc_read_event_value(struct iio_dev *indio_dev,
 	const struct iio_chan_spec *chan, enum iio_event_type type,
-	enum iio_event_direction dir, int *val)
+	enum iio_event_direction dir, int *val, enum iio_event_info info)
 {
 	unsigned int offset = xadc_get_threshold_offset(chan, type, dir);
 	struct xadc *xadc = iio_priv(indio_dev);
@@ -239,7 +239,7 @@ int xadc_read_event_value(struct iio_dev *indio_dev,
 
 int xadc_write_event_value(struct iio_dev *indio_dev,
 	const struct iio_chan_spec *chan, enum iio_event_type type,
-	enum iio_event_direction dir, int val)
+	enum iio_event_direction dir, int val, enum iio_event_info info)
 {
 	unsigned int offset = xadc_get_threshold_offset(chan, type, dir);
 	struct xadc *xadc = iio_priv(indio_dev);

@@ -204,7 +204,8 @@ static int lis3l02dq_read_thresh(struct iio_dev *indio_dev,
 				 const struct iio_chan_spec *chan,
 				 enum iio_event_type type,
 				 enum iio_event_direction dir,
-				 int *val)
+				 int *val,
+				 enum iio_event_info info)
 {
 	return lis3l02dq_read_reg_s16(indio_dev, LIS3L02DQ_REG_THS_L_ADDR, val);
 }
@@ -213,7 +214,8 @@ static int lis3l02dq_write_thresh(struct iio_dev *indio_dev,
 				  const struct iio_chan_spec *chan,
 				  enum iio_event_type type,
 				  enum iio_event_direction dir,
-				  int val)
+				  int val,
+				  enum iio_event_info info)
 {
 	u16 value = val;
 	return lis3l02dq_spi_write_reg_s16(indio_dev,
@@ -522,9 +524,17 @@ static irqreturn_t lis3l02dq_event_handler(int irq, void *private)
 	 IIO_CHAN_INFO_CALIBSCALE_SEPARATE_BIT |	\
 	 IIO_CHAN_INFO_CALIBBIAS_SEPARATE_BIT)
 
-#define LIS3L02DQ_EVENT_MASK					\
-	(IIO_EV_BIT(IIO_EV_TYPE_THRESH, IIO_EV_DIR_RISING) |	\
-	 IIO_EV_BIT(IIO_EV_TYPE_THRESH, IIO_EV_DIR_FALLING))
+static const struct iio_event_spec s3000_event[] = {
+	{
+		.type = IIO_EV_TYPE_THRESH,
+		.dir = IIO_EV_DIR_RISING,
+		.mask_separate = BIT(IIO_EV_INFO_VALUE),
+	}, {
+		.type = IIO_EV_TYPE_THRESH,
+		.dir = IIO_EV_DIR_FALLING,
+		.mask_separate = BIT(IIO_EV_INFO_VALUE),
+	}
+};
 
 #define LIS3L02DQ_CHAN(index, mod)				\
 	{							\
@@ -539,7 +549,8 @@ static irqreturn_t lis3l02dq_event_handler(int irq, void *private)
 			.realbits = 12,				\
 			.storagebits = 16,			\
 		},						\
-		.event_mask = LIS3L02DQ_EVENT_MASK,		\
+		.event_spec = s3000_event,			\
+		.num_event_specs = ARRAY_SIZE(s3000_event),	\
 	 }
 
 static struct iio_chan_spec lis3l02dq_channels[] = {

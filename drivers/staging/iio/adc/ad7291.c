@@ -312,7 +312,8 @@ static int ad7291_read_event_value(struct iio_dev *indio_dev,
 				   const struct iio_chan_spec *chan,
 				   enum iio_event_type type,
 				   enum iio_event_direction dir,
-				   int *val)
+				   int *val,
+				   enum iio_event_info info)
 {
 	struct ad7291_chip_info *chip = iio_priv(indio_dev);
 
@@ -349,7 +350,8 @@ static int ad7291_write_event_value(struct iio_dev *indio_dev,
 				    const struct iio_chan_spec *chan,
 				    enum iio_event_type type,
 				    enum iio_event_direction dir,
-				    int val)
+				    int val,
+				    enum iio_event_info info)
 {
 	struct ad7291_chip_info *chip = iio_priv(indio_dev);
 	u8 reg;
@@ -531,6 +533,18 @@ static int ad7291_read_raw(struct iio_dev *indio_dev,
 	}
 }
 
+static const struct iio_event_spec ad7291_events[] = {
+	{
+		.type = IIO_EV_TYPE_THRESH,
+		.dir = IIO_EV_DIR_RISING,
+		.mask_separate = BIT(IIO_EV_INFO_VALUE),
+	}, {
+		.type = IIO_EV_TYPE_THRESH,
+		.dir = IIO_EV_DIR_FALLING,
+		.mask_separate = BIT(IIO_EV_INFO_VALUE),
+	}
+};
+
 #define AD7291_VOLTAGE_CHAN(_chan)					\
 {									\
 	.type = IIO_VOLTAGE,						\
@@ -538,8 +552,8 @@ static int ad7291_read_raw(struct iio_dev *indio_dev,
 	IIO_CHAN_INFO_SCALE_SHARED_BIT,					\
 	.indexed = 1,							\
 	.channel = _chan,						\
-	.event_mask = IIO_EV_BIT(IIO_EV_TYPE_THRESH, IIO_EV_DIR_RISING)|\
-	IIO_EV_BIT(IIO_EV_TYPE_THRESH, IIO_EV_DIR_FALLING)		\
+	.event_spec = ad7291_events,					\
+	.num_event_specs = ARRAY_SIZE(ad7291_events),			\
 }
 
 static const struct iio_chan_spec ad7291_channels[] = {
@@ -558,9 +572,8 @@ static const struct iio_chan_spec ad7291_channels[] = {
 				IIO_CHAN_INFO_SCALE_SEPARATE_BIT,
 		.indexed = 1,
 		.channel = 0,
-		.event_mask =
-		IIO_EV_BIT(IIO_EV_TYPE_THRESH, IIO_EV_DIR_RISING)|
-		IIO_EV_BIT(IIO_EV_TYPE_THRESH, IIO_EV_DIR_FALLING)
+		.event_spec = ad7291_events,
+		.num_event_specs = ARRAY_SIZE(ad7291_events),
 	}
 };
 

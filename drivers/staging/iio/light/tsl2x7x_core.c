@@ -124,11 +124,6 @@
 #define TSL2X7X_mA13                   0xD0
 #define TSL2X7X_MAX_TIMER_CNT          (0xFF)
 
-/*Common device IIO EventMask */
-#define TSL2X7X_EVENT_MASK \
-		(IIO_EV_BIT(IIO_EV_TYPE_THRESH, IIO_EV_DIR_RISING) | \
-		IIO_EV_BIT(IIO_EV_TYPE_THRESH, IIO_EV_DIR_FALLING)),
-
 #define TSL2X7X_MIN_ITIME 3
 
 /* TAOS txx2x7x Device family members */
@@ -1277,12 +1272,14 @@ static ssize_t tsl2x7x_do_prox_calibrate(struct device *dev,
 }
 
 static int tsl2x7x_read_interrupt_config(struct iio_dev *indio_dev,
-					 u64 event_code)
+					 const struct iio_chan_spec *chan,
+					 enum iio_event_type type,
+					 enum iio_event_direction dir)
 {
 	struct tsl2X7X_chip *chip = iio_priv(indio_dev);
 	int ret;
 
-	if (IIO_EVENT_CODE_EXTRACT_CHAN_TYPE(event_code) == IIO_INTENSITY)
+	if (chan->type == IIO_INTENSITY)
 		ret = !!(chip->tsl2x7x_settings.interrupts_en & 0x10);
 	else
 		ret = !!(chip->tsl2x7x_settings.interrupts_en & 0x20);
@@ -1291,12 +1288,14 @@ static int tsl2x7x_read_interrupt_config(struct iio_dev *indio_dev,
 }
 
 static int tsl2x7x_write_interrupt_config(struct iio_dev *indio_dev,
-					  u64 event_code,
+					  const struct iio_chan_spec *chan,
+					  enum iio_event_type type,
+					  enum iio_event_direction dir,
 					  int val)
 {
 	struct tsl2X7X_chip *chip = iio_priv(indio_dev);
 
-	if (IIO_EVENT_CODE_EXTRACT_CHAN_TYPE(event_code) == IIO_INTENSITY) {
+	if (chan->type == IIO_INTENSITY) {
 		if (val)
 			chip->tsl2x7x_settings.interrupts_en |= 0x10;
 		else
@@ -1314,13 +1313,16 @@ static int tsl2x7x_write_interrupt_config(struct iio_dev *indio_dev,
 }
 
 static int tsl2x7x_write_thresh(struct iio_dev *indio_dev,
-				  u64 event_code,
-				  int val)
+			        const struct iio_chan_spec *chan,
+			        enum iio_event_type type,
+			        enum iio_event_direction dir,
+			        int val,
+			        enum iio_event_info info)
 {
 	struct tsl2X7X_chip *chip = iio_priv(indio_dev);
 
-	if (IIO_EVENT_CODE_EXTRACT_CHAN_TYPE(event_code) == IIO_INTENSITY) {
-		switch (IIO_EVENT_CODE_EXTRACT_DIR(event_code)) {
+	if (chan->type == IIO_INTENSITY) {
+		switch (dir) {
 		case IIO_EV_DIR_RISING:
 			chip->tsl2x7x_settings.als_thresh_high = val;
 			break;
@@ -1331,7 +1333,7 @@ static int tsl2x7x_write_thresh(struct iio_dev *indio_dev,
 			return -EINVAL;
 		}
 	} else {
-		switch (IIO_EVENT_CODE_EXTRACT_DIR(event_code)) {
+		switch (dir) {
 		case IIO_EV_DIR_RISING:
 			chip->tsl2x7x_settings.prox_thres_high = val;
 			break;
@@ -1349,13 +1351,16 @@ static int tsl2x7x_write_thresh(struct iio_dev *indio_dev,
 }
 
 static int tsl2x7x_read_thresh(struct iio_dev *indio_dev,
-			       u64 event_code,
-			       int *val)
+			       const struct iio_chan_spec *chan,
+			       enum iio_event_type type,
+			       enum iio_event_direction dir,
+			       int *val,
+			       enum iio_event_info info)
 {
 	struct tsl2X7X_chip *chip = iio_priv(indio_dev);
 
-	if (IIO_EVENT_CODE_EXTRACT_CHAN_TYPE(event_code) == IIO_INTENSITY) {
-		switch (IIO_EVENT_CODE_EXTRACT_DIR(event_code)) {
+	if (chan->type == IIO_INTENSITY) {
+		switch (dir) {
 		case IIO_EV_DIR_RISING:
 			*val = chip->tsl2x7x_settings.als_thresh_high;
 			break;
@@ -1366,7 +1371,7 @@ static int tsl2x7x_read_thresh(struct iio_dev *indio_dev,
 			return -EINVAL;
 		}
 	} else {
-		switch (IIO_EVENT_CODE_EXTRACT_DIR(event_code)) {
+		switch (dir) {
 		case IIO_EV_DIR_RISING:
 			*val = chip->tsl2x7x_settings.prox_thres_high;
 			break;
@@ -1780,6 +1785,18 @@ static const struct iio_info tsl2X7X_device_info[] = {
 	},
 };
 
+static const struct iio_event_spec tsl2x7x_events[] = {
+	{
+		.type = IIO_EV_TYPE_THRESH,
+		.dir = IIO_EV_DIR_RISING,
+		.mask_separate = BIT(IIO_EV_INFO_VALUE),
+	}, {
+		.type = IIO_EV_TYPE_THRESH,
+		.dir = IIO_EV_DIR_FALLING,
+		.mask_separate = BIT(IIO_EV_INFO_VALUE),
+	},
+};
+
 static const struct tsl2x7x_chip_info tsl2x7x_chip_info_tbl[] = {
 	[ALS] = {
 		.channel = {
@@ -1795,7 +1812,8 @@ static const struct tsl2x7x_chip_info tsl2x7x_chip_info_tbl[] = {
 			.info_mask = IIO_CHAN_INFO_RAW_SEPARATE_BIT |
 				IIO_CHAN_INFO_CALIBSCALE_SEPARATE_BIT |
 				IIO_CHAN_INFO_CALIBBIAS_SEPARATE_BIT,
-			.event_mask = TSL2X7X_EVENT_MASK
+			.event_spec = tsl2x7x_events,
+			.num_event_specs = ARRAY_SIZE(tsl2x7x_events),
 			}, {
 			.type = IIO_INTENSITY,
 			.indexed = 1,
@@ -1812,7 +1830,8 @@ static const struct tsl2x7x_chip_info tsl2x7x_chip_info_tbl[] = {
 			.indexed = 1,
 			.channel = 0,
 			.info_mask = IIO_CHAN_INFO_RAW_SEPARATE_BIT,
-			.event_mask = TSL2X7X_EVENT_MASK
+			.event_spec = tsl2x7x_events,
+			.num_event_specs = ARRAY_SIZE(tsl2x7x_events),
 			},
 		},
 	.chan_table_elements = 1,
@@ -1832,7 +1851,8 @@ static const struct tsl2x7x_chip_info tsl2x7x_chip_info_tbl[] = {
 			.info_mask = IIO_CHAN_INFO_RAW_SEPARATE_BIT |
 				IIO_CHAN_INFO_CALIBSCALE_SEPARATE_BIT |
 				IIO_CHAN_INFO_CALIBBIAS_SEPARATE_BIT,
-			.event_mask = TSL2X7X_EVENT_MASK
+			.event_spec = tsl2x7x_events,
+			.num_event_specs = ARRAY_SIZE(tsl2x7x_events),
 			}, {
 			.type = IIO_INTENSITY,
 			.indexed = 1,
@@ -1843,7 +1863,8 @@ static const struct tsl2x7x_chip_info tsl2x7x_chip_info_tbl[] = {
 			.indexed = 1,
 			.channel = 0,
 			.info_mask = IIO_CHAN_INFO_RAW_SEPARATE_BIT,
-			.event_mask = TSL2X7X_EVENT_MASK
+			.event_spec = tsl2x7x_events,
+			.num_event_specs = ARRAY_SIZE(tsl2x7x_events),
 			},
 		},
 	.chan_table_elements = 4,
@@ -1857,7 +1878,8 @@ static const struct tsl2x7x_chip_info tsl2x7x_chip_info_tbl[] = {
 			.channel = 0,
 			.info_mask = IIO_CHAN_INFO_RAW_SEPARATE_BIT |
 				IIO_CHAN_INFO_CALIBSCALE_SEPARATE_BIT,
-			.event_mask = TSL2X7X_EVENT_MASK
+			.event_spec = tsl2x7x_events,
+			.num_event_specs = ARRAY_SIZE(tsl2x7x_events),
 			},
 		},
 	.chan_table_elements = 1,
@@ -1877,7 +1899,8 @@ static const struct tsl2x7x_chip_info tsl2x7x_chip_info_tbl[] = {
 			.info_mask = IIO_CHAN_INFO_RAW_SEPARATE_BIT |
 				IIO_CHAN_INFO_CALIBSCALE_SEPARATE_BIT |
 				IIO_CHAN_INFO_CALIBBIAS_SEPARATE_BIT,
-			.event_mask = TSL2X7X_EVENT_MASK
+			.event_spec = tsl2x7x_events,
+			.num_event_specs = ARRAY_SIZE(tsl2x7x_events),
 			}, {
 			.type = IIO_INTENSITY,
 			.indexed = 1,
@@ -1889,7 +1912,8 @@ static const struct tsl2x7x_chip_info tsl2x7x_chip_info_tbl[] = {
 			.channel = 0,
 			.info_mask = IIO_CHAN_INFO_RAW_SEPARATE_BIT |
 				IIO_CHAN_INFO_CALIBSCALE_SEPARATE_BIT,
-			.event_mask = TSL2X7X_EVENT_MASK
+			.event_spec = tsl2x7x_events,
+			.num_event_specs = ARRAY_SIZE(tsl2x7x_events),
 			},
 		},
 	.chan_table_elements = 4,

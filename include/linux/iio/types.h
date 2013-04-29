@@ -62,6 +62,10 @@ enum iio_event_type {
 	IIO_EV_TYPE_THRESH_NOT_ACTIVE
 };
 
+enum iio_event_info {
+	IIO_EV_INFO_VALUE,
+};
+
 enum iio_event_direction {
 	IIO_EV_DIR_EITHER,
 	IIO_EV_DIR_RISING,

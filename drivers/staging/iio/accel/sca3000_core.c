@@ -430,8 +430,12 @@ static IIO_DEVICE_ATTR(revision, S_IRUGO, sca3000_show_rev, NULL, 0);
 
 #define SCA3000_INFO_MASK			\
 	IIO_CHAN_INFO_RAW_SEPARATE_BIT | IIO_CHAN_INFO_SCALE_SHARED_BIT
-#define SCA3000_EVENT_MASK					\
-	(IIO_EV_BIT(IIO_EV_TYPE_MAG, IIO_EV_DIR_RISING))
+
+static const struct iio_event_spec s3000_event = {
+	.type = IIO_EV_TYPE_MAG,
+	.dir = IIO_EV_DIR_RISING,
+	.mask_separate = BIT(IIO_EV_INFO_VALUE),
+};
 
 #define SCA3000_CHAN(index, mod)				\
 	{							\
@@ -447,7 +451,8 @@ static IIO_DEVICE_ATTR(revision, S_IRUGO, sca3000_show_rev, NULL, 0);
 			.storagebits = 16,			\
 			.shift = 5,				\
 		},						\
-		.event_mask = SCA3000_EVENT_MASK,		\
+		.event_spec = &s3000_event,			\
+		.num_event_specs = 1,				\
 	 }
 
 static struct iio_chan_spec sca3000_channels[] = {
@@ -716,7 +721,8 @@ static int sca3000_read_thresh(struct iio_dev *indio_dev,
 			       const struct iio_chan_spec *chan,
 			       enum iio_event_type type,
 			       enum iio_event_direction dir,
-			       int *val)
+			       int *val,
+				   enum iio_event_info info)
 {
 	int ret, i;
 	struct sca3000_state *st = iio_priv(indio_dev);
@@ -746,7 +752,8 @@ static int sca3000_write_thresh(struct iio_dev *indio_dev,
 				const struct iio_chan_spec *chan,
 				enum iio_event_type type,
 				enum iio_event_direction dir,
-				int val)
+				int val,
+				enum iio_event_info info)
 {
 	struct sca3000_state *st = iio_priv(indio_dev);
 	int num = chan->channel2;

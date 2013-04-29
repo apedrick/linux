@@ -80,6 +80,23 @@ struct ad5421_state {
 	} data[2] ____cacheline_aligned;
 };
 
+static const struct iio_event_spec ad5421_current_event[] = {
+	{
+		.type = IIO_EV_TYPE_THRESH,
+		.dir = IIO_EV_DIR_RISING,
+	}, {
+		.type = IIO_EV_TYPE_THRESH,
+		.type = IIO_EV_DIR_FALLING,
+	},
+};
+
+static const struct iio_event_spec ad5421_temp_event[] = {
+	{
+		.type = IIO_EV_TYPE_THRESH,
+		.dir = IIO_EV_DIR_RISING,
+	},
+};
+
 static const struct iio_chan_spec ad5421_channels[] = {
 	{
 		.type = IIO_CURRENT,
@@ -92,13 +109,14 @@ static const struct iio_chan_spec ad5421_channels[] = {
 			IIO_CHAN_INFO_CALIBSCALE_SEPARATE_BIT |
 			IIO_CHAN_INFO_CALIBBIAS_SEPARATE_BIT,
 		.scan_type = IIO_ST('u', 16, 16, 0),
-		.event_mask = IIO_EV_BIT(IIO_EV_TYPE_THRESH, IIO_EV_DIR_RISING) |
-			IIO_EV_BIT(IIO_EV_TYPE_THRESH, IIO_EV_DIR_FALLING),
+		.event_spec = ad5421_current_event,
+		.num_event_specs = ARRAY_SIZE(ad5421_current_event),
 	},
 	{
 		.type = IIO_TEMP,
 		.channel = -1,
-		.event_mask = IIO_EV_BIT(IIO_EV_TYPE_THRESH, IIO_EV_DIR_RISING),
+		.event_spec = ad5421_temp_event,
+		.num_event_specs = ARRAY_SIZE(ad5421_temp_event),
 	},
 };
 
@@ -420,7 +438,7 @@ static int ad5421_read_event_config(struct iio_dev *indio_dev,
 
 static int ad5421_read_event_value(struct iio_dev *indio_dev,
 	const struct iio_chan_spec *chan, enum iio_event_type type,
-	enum iio_event_direction dir, int *val)
+	enum iio_event_direction dir, int *val, enum iio_event_info info)
 {
 	int ret;
 

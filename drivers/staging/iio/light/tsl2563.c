@@ -531,6 +531,18 @@ error_ret:
 	return ret;
 }
 
+static const struct iio_event_spec tsl2563_events[] = {
+	{
+		.type = IIO_EV_TYPE_THRESH,
+		.dir = IIO_EV_DIR_RISING,
+		.mask_separate = BIT(IIO_EV_INFO_VALUE),
+	}, {
+		.type = IIO_EV_TYPE_THRESH,
+		.dir = IIO_EV_DIR_FALLING,
+		.mask_separate = BIT(IIO_EV_INFO_VALUE),
+	},
+};
+
 static const struct iio_chan_spec tsl2563_channels[] = {
 	{
 		.type = IIO_LIGHT,
@@ -543,10 +555,8 @@ static const struct iio_chan_spec tsl2563_channels[] = {
 		.channel2 = IIO_MOD_LIGHT_BOTH,
 		.info_mask = IIO_CHAN_INFO_RAW_SEPARATE_BIT |
 		IIO_CHAN_INFO_CALIBSCALE_SEPARATE_BIT,
-		.event_mask = (IIO_EV_BIT(IIO_EV_TYPE_THRESH,
-					  IIO_EV_DIR_RISING) |
-			       IIO_EV_BIT(IIO_EV_TYPE_THRESH,
-					  IIO_EV_DIR_FALLING)),
+		.event_spec = tsl2563_events,
+		.num_event_specs = ARRAY_SIZE(tsl2563_events),
 	}, {
 		.type = IIO_INTENSITY,
 		.modified = 1,
@@ -560,7 +570,8 @@ static int tsl2563_read_thresh(struct iio_dev *indio_dev,
 			       const struct iio_chan_spec *chan,
 			       enum iio_event_type type,
 			       enum iio_event_direction dir,
-			       int *val)
+			       int *val,
+			       enum iio_event_info info)
 {
 	struct tsl2563_chip *chip = iio_priv(indio_dev);
 
@@ -582,7 +593,8 @@ static int tsl2563_write_thresh(struct iio_dev *indio_dev,
 				const struct iio_chan_spec *chan,
 				enum iio_event_type type,
 				enum iio_event_direction dir,
-				int val)
+				int val,
+				enum iio_event_info info)
 {
 	struct tsl2563_chip *chip = iio_priv(indio_dev);
 	int ret;

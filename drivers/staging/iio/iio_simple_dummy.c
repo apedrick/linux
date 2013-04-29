@@ -57,6 +57,20 @@ static const struct iio_dummy_accel_calibscale dummy_scales[] = {
 	{ 733, 13, 0x9 }, /* 733.00013 */
 };
 
+#ifdef CONFIG_IIO_SIMPLE_DUMMY_EVENTS
+
+/*
+ * simple event - triggered when value rises above
+ * a threshold
+ */
+static const struct iio_event_spec iio_dummy_event = {
+	.type = IIO_EV_TYPE_THRESH,
+	.dir = IIO_EV_DIR_RISING,
+	.mask_separate = BIT(IIO_EV_INFO_VALUE),
+};
+
+#endif
+
 /*
  * iio_dummy_channels - Description of available channels
  *
@@ -99,12 +113,8 @@ static struct iio_chan_spec iio_dummy_channels[] = {
 			.shift = 0, /* zero shift */
 		},
 #ifdef CONFIG_IIO_SIMPLE_DUMMY_EVENTS
-		/*
-		 * simple event - triggered when value rises above
-		 * a threshold
-		 */
-		.event_mask = IIO_EV_BIT(IIO_EV_TYPE_THRESH,
-					 IIO_EV_DIR_RISING),
+		.event_spec = &iio_dummy_event,
+		.num_event_specs = 1,
 #endif /* CONFIG_IIO_SIMPLE_DUMMY_EVENTS */
 	},
 	/* Differential ADC channel in_voltage1-voltage2_raw etc*/

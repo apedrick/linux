@@ -193,6 +193,13 @@ ssize_t iio_enum_write(struct iio_dev *indio_dev,
 	.private = (uintptr_t)(_e), \
 }
 
+struct iio_event_spec {
+	enum iio_event_type type;
+	enum iio_event_direction dir;
+	unsigned long mask_separate;
+	unsigned long mask_shared_by_type;
+};
+
 /**
  * struct iio_chan_spec - specification of a single channel
  * @type:		What type of measurement is the channel making.
@@ -245,7 +252,8 @@ struct iio_chan_spec {
 		enum iio_endian endianness;
 	} scan_type;
 	long			info_mask;
-	long			event_mask;
+	const struct iio_event_spec *event_spec;
+	unsigned int		num_event_specs;
 	const struct iio_chan_spec_ext_info *ext_info;
 	const char		*extend_name;
 	const char		*datasheet_name;
@@ -349,12 +357,12 @@ struct iio_info {
 				const struct iio_chan_spec *chan,
 				enum iio_event_type type,
 				enum iio_event_direction dir,
-				int *val);
+				int *val, enum iio_event_info info);
 	int (*write_event_value)(struct iio_dev *indio_dev,
 				 const struct iio_chan_spec *chan,
 				 enum iio_event_type type,
 				 enum iio_event_direction dir,
-				 int val);
+				 int val, enum iio_event_info info);
 	int (*validate_trigger)(struct iio_dev *indio_dev,
 				struct iio_trigger *trig);
 	int (*update_scan_mode)(struct iio_dev *indio_dev,

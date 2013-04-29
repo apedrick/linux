@@ -182,14 +182,18 @@ static const char * const iio_ev_dir_text[] = {
 	[IIO_EV_DIR_FALLING] = "falling"
 };
 
+static const char * const iio_ev_info_text[] = {
+	[IIO_EV_INFO_VALUE] = "value",
+};
+
 static enum iio_event_direction iio_ev_attr_dir(struct iio_dev_attr *attr)
 {
-    return attr->address % IIO_EV_DIR_MAX;
+    return attr->c->event_spec[attr->address & 0xffffffff].dir;
 }
 
 static enum iio_event_type iio_ev_attr_type(struct iio_dev_attr *attr)
 {
-    return attr->address / IIO_EV_DIR_MAX;
+    return attr->c->event_spec[attr->address & 0xffffffff].type;
 }
 
 static ssize_t iio_ev_state_store(struct device *dev,
@@ -241,7 +245,7 @@ static ssize_t iio_ev_value_show(struct device *dev,
 	ret = indio_dev->info->read_event_value(indio_dev, this_attr->c,
 						iio_ev_attr_type(this_attr),
 						iio_ev_attr_dir(this_attr),
-						&val);
+						&val, this_attr->address >> 32);
 	if (ret < 0)
 		return ret;
 
@@ -268,25 +272,62 @@ static ssize_t iio_ev_value_store(struct device *dev,
 	ret = indio_dev->info->write_event_value(indio_dev, this_attr->c,
 						 iio_ev_attr_type(this_attr),
 						 iio_ev_attr_dir(this_attr),
-						 val);
+						 val, this_attr->address >> 32);
 	if (ret < 0)
 		return ret;
 
 	return len;
 }
 
+static int iio_device_add_event(struct iio_dev *indio_dev,
+	const struct iio_chan_spec *chan, unsigned int spec_offset,
+	enum iio_event_type type, enum iio_event_direction dir,
+	bool shared, const unsigned long *mask)
+{
+	unsigned int attrcount = 0;
+	unsigned int i;
+	char *postfix;
+	int ret;
+
+	for_each_set_bit(i, mask, sizeof(*mask)) {
+		postfix = kasprintf(GFP_KERNEL, "%s_%s_%s",
+				    iio_ev_type_text[type],
+				    iio_ev_dir_text[dir],
+					iio_ev_info_text[i]);
+		if (postfix == NULL)
+			return -ENOMEM;
+
+		ret = __iio_add_chan_devattr(postfix, chan,
+					     iio_ev_value_show,
+					     iio_ev_value_store,
+					     ((u64)i << 32) | spec_offset,
+					     shared,
+					     &indio_dev->dev,
+					     &indio_dev->event_interface->
+					     dev_attr_list);
+		kfree(postfix);
+		if (ret)
+			return ret;
+		attrcount++;
+	}
+
+	return attrcount;
+}
+
 static int iio_device_add_event_sysfs(struct iio_dev *indio_dev,
 				      struct iio_chan_spec const *chan)
 {
 	int ret = 0, i, attrcount = 0;
+	enum iio_event_direction dir;
+	enum iio_event_type type;
 	char *postfix;
-	if (!chan->event_mask)
-		return 0;
 
-	for_each_set_bit(i, &chan->event_mask, sizeof(chan->event_mask)*8) {
+	for (i = 0; i < chan->num_event_specs; i++) {
+		type = chan->event_spec[i].type;
+		dir = chan->event_spec[i].dir;
 		postfix = kasprintf(GFP_KERNEL, "%s_%s_en",
-				    iio_ev_type_text[i/IIO_EV_DIR_MAX],
-				    iio_ev_dir_text[i%IIO_EV_DIR_MAX]);
+				    iio_ev_type_text[type],
+				    iio_ev_dir_text[dir]);
 		if (postfix == NULL) {
 			ret = -ENOMEM;
 			goto error_ret;
@@ -305,25 +346,18 @@ static int iio_device_add_event_sysfs(struct iio_dev *indio_dev,
 		if (ret)
 			goto error_ret;
 		attrcount++;
-		postfix = kasprintf(GFP_KERNEL, "%s_%s_value",
-				    iio_ev_type_text[i/IIO_EV_DIR_MAX],
-				    iio_ev_dir_text[i%IIO_EV_DIR_MAX]);
-		if (postfix == NULL) {
-			ret = -ENOMEM;
+
+		ret = iio_device_add_event(indio_dev, chan, i, type, dir, false,
+			&chan->event_spec[i].mask_separate);
+		if (ret < 0)
 			goto error_ret;
-		}
-		ret = __iio_add_chan_devattr(postfix, chan,
-					     iio_ev_value_show,
-					     iio_ev_value_store,
-					     i,
-					     0,
-					     &indio_dev->dev,
-					     &indio_dev->event_interface->
-					     dev_attr_list);
-		kfree(postfix);
-		if (ret)
+		attrcount += ret;
+
+		ret = iio_device_add_event(indio_dev, chan, i, type, dir, true,
+			&chan->event_spec[i].mask_shared_by_type);
+		if (ret < 0)
 			goto error_ret;
-		attrcount++;
+		attrcount += ret;
 	}
 	ret = attrcount;
 error_ret:
@@ -366,7 +400,7 @@ static bool iio_check_for_dynamic_events(struct iio_dev *indio_dev)
 	int j;
 
 	for (j = 0; j < indio_dev->num_channels; j++)
-		if (indio_dev->channels[j].event_mask != 0)
+		if (indio_dev->channels[j].num_event_specs != 0)
 			return true;
 	return false;
 }
